@@ -66,10 +66,12 @@ export default class ShoppingListPlugin extends Plugin {
     }
 
     async initializeStates() {
-        const files = this.app.vault.getMarkdownFiles();
-        for (const file of files) {
-            await this.initializeFileState(file);
-        }
+        // Only initialize files that are currently open in the workspace
+        this.app.workspace.iterateAllLeaves((leaf) => {
+            if (leaf.view instanceof MarkdownView && leaf.view.file) {
+                this.initializeFileState(leaf.view.file).catch((e) => console.error(e));
+            }
+        });
     }
 
     async initializeFileState(file: TFile) {
@@ -432,7 +434,12 @@ export default class ShoppingListPlugin extends Plugin {
 
         for (let i = 0; i < current.length; i++) {
             const currSec = current[i];
-            const prevSec = previous.find((p) => p.header === currSec.header);
+
+            // 1. Improved section matching: try index first, then fallback to header text
+            let prevSec =
+                previous[i] && previous[i].header === currSec.header
+                    ? previous[i]
+                    : previous.find((p) => p.header === currSec.header);
 
             if (currSec.header) {
                 resultLines.push(currSec.header);
@@ -447,28 +454,63 @@ export default class ShoppingListPlugin extends Plugin {
                 continue;
             }
 
+            // 2. Robust 1-to-1 item matching using a pool of previous items
+            const prevItemsPool = new Map<string, boolean[]>();
+            prevSec.items.forEach((item) => {
+                const text = item.text.trim();
+                if (!prevItemsPool.has(text)) prevItemsPool.set(text, []);
+                prevItemsPool.get(text)!.push(item.checked);
+            });
+
             const newlyChecked: ListItemState[] = [];
             const newlyUnchecked: ListItemState[] = [];
             const stillChecked: ListItemState[] = [];
             const stillUnchecked: ListItemState[] = [];
 
-            const prevItemsMap = new Map<string, boolean>();
-            prevSec.items.forEach((item) => prevItemsMap.set(item.text, item.checked));
+            const itemAssignments = new Array<string | null>(currSec.items.length).fill(null);
 
-            currSec.items.forEach((item) => {
-                const prevChecked = prevItemsMap.get(item.text);
-                if (prevChecked === undefined) {
-                    if (item.checked) stillChecked.push(item);
-                    else stillUnchecked.push(item);
-                } else if (!prevChecked && item.checked) {
-                    newlyChecked.push(item);
-                } else if (prevChecked && !item.checked) {
-                    newlyUnchecked.push(item);
-                } else if (item.checked) {
-                    stillChecked.push(item);
-                } else {
-                    stillUnchecked.push(item);
+            // Pass 1: Match same text AND same state (STILL checked/unchecked)
+            currSec.items.forEach((item, index) => {
+                const text = item.text.trim();
+                const pool = prevItemsPool.get(text);
+                if (pool) {
+                    const poolIndex = pool.indexOf(item.checked);
+                    if (poolIndex !== -1) {
+                        pool.splice(poolIndex, 1);
+                        itemAssignments[index] = item.checked ? 'stillChecked' : 'stillUnchecked';
+                    }
                 }
+            });
+
+            // Pass 2: Match remaining items with same text but different state (NEWLY checked/unchecked toggles)
+            currSec.items.forEach((item, index) => {
+                if (itemAssignments[index]) return;
+
+                const text = item.text.trim();
+                const pool = prevItemsPool.get(text);
+                if (pool && pool.length > 0) {
+                    const prevChecked = pool.shift()!;
+                    if (!prevChecked && item.checked) itemAssignments[index] = 'newlyChecked';
+                    else if (prevChecked && !item.checked)
+                        itemAssignments[index] = 'newlyUnchecked';
+                    // If states are same, it should have been caught in Pass 1, but handle as fallback
+                    else itemAssignments[index] = item.checked ? 'stillChecked' : 'stillUnchecked';
+                }
+            });
+
+            // Pass 3: Remaining items are considered NEW (treat as STILL checked/unchecked to keep position)
+            currSec.items.forEach((item, index) => {
+                if (itemAssignments[index]) return;
+                itemAssignments[index] = item.checked ? 'stillChecked' : 'stillUnchecked';
+            });
+
+            // Collection into groups, preserving relative order from current state
+            currSec.items.forEach((item, index) => {
+                const assignment = itemAssignments[index];
+                if (assignment === 'stillUnchecked') stillUnchecked.push(item);
+                else if (assignment === 'newlyUnchecked') newlyUnchecked.push(item);
+                else if (assignment === 'stillChecked') stillChecked.push(item);
+                else if (assignment === 'newlyChecked') newlyChecked.push(item);
             });
 
             const finalItems = [

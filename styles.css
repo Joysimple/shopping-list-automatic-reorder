@@ -39,14 +39,14 @@ If your plugin does not need CSS, delete this file.
 }
 
 /* Hide content when collapsed */
-.sl-collapsed-content,
-.sl-hidden {
-    display: none !important;
+body .sl-collapsed-content,
+body .sl-hidden {
+    display: none;
 }
 
 /* Hide completed items within the scope */
-.sl-hide-completed-scope .task-list-item.is-checked {
-    display: none !important;
+body .sl-hide-completed-scope .task-list-item.is-checked {
+    display: none;
 }
 
 /* Optional: Make headers with active toggles look slightly different */

@@ -17,6 +17,11 @@ main.js
 
 # obsidian
 data.json
+.obsidian/
+vault/
+
+# showcase
+showcase/temp-obsidian-data/
 
 # Exclude macOS Finder (System Explorer) View States
 .DS_Store

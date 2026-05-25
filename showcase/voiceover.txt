@@ -1,0 +1,14 @@
+# ElevenLabs Voiceover Script
+# Recommended Voice: "Brian", "Callum", or "Charlie" (Professional/Tech)
+
+Managing grocery lists in Obsidian can be messy, but the Automatic Shopping List plugin keeps everything organized for you. <break time="1s" />
+
+Simply add the "shopping-list" tag to any note to activate it. <break time="1.5s" />
+
+As you type out your list, the plugin stays out of your way. But when you check an item off... <break time="0.5s" /> it instantly moves to the bottom of the section. <break time="2s" />
+
+You can manage your categories with ease. Use the "Hide" button to collapse entire sections, or toggle "Hide completed" to focus only on what you still need to buy. <break time="3s" />
+
+And for those who sync across devices: the plugin is smart. If you add an item that's already been checked off, it stays right where you put it, keeping your active list in order while preserving your history. <break time="2s" />
+
+Get the Automatic Shopping List plugin for Obsidian and never lose track of your groceries again.
